@@ -132,11 +132,13 @@ const Navbar = () => {
             <AiOutlineMenu
               onClick={() => setNav(!nav)}
               size={30}
-              className="mr-2 cursor-pointer"
+              className="mr-2 cursor-pointer sm:hidden"
             />
-            <Link href="/home" className="flex items-center text-gray-900">
+            <Link href="/" className="flex items-center text-gray-900">
               <div className="w-20 h-25 text-white p-2 md:w-16 md:h-20">
-                <img
+                <Image
+                width={500}
+                height={500}
                   src="/esmeraldaLogosolo.png"
                   alt="Logo"
                   className="w-full h-full object-cover"
@@ -147,7 +149,7 @@ const Navbar = () => {
           <div className="flex items-center w-full md:w-auto justify-between space-x-2 md:hidden">
             <div className="relative flex items-center w-full md:w-auto justify-between md:justify-start space-x-2">
               <input
-                className="bg-gray-200 rounded-full pl-8 pr-4 py-1 focus:outline-none w-full md:w-64"
+                className="bg-gray-200 rounded-full pl-10 pr-4 py-1 focus:outline-none w-full md:w-64"
                 type="text"
                 placeholder="Buscar productos..."
                 value={searchTerm}
@@ -177,10 +179,10 @@ const Navbar = () => {
                 inline
                 label={
                   <Image
-                    src={"/perfil.png"}
+                    src={"/perfilModerno.png"}
                     alt="imagen"
-                    width={30}
-                    height={30}
+                    width={40}
+                    height={40}
                     className="rounded-full"
                   />
                 }
@@ -203,35 +205,35 @@ const Navbar = () => {
             )}
           </div>
         </div>
-        <nav className="hidden md:flex md:ml-auto md:mr-auto flex-wrap items-center text-base justify-center">
-          <Link href="/categories" className="mr-5 hover:text-gray-900">
+        <nav className="hidden md:flex md:ml-auto md:mr-auto flex-wrap items-center text-base justify-center gap-5 mx-5">
+          <Link href="/categories" className={` hover:text-gray-900 ${pathname === "/categories" && "text-gray-900 font-bold"}`}>
             Tienda Online
           </Link>
           {userRole === "admin" && (
-            <Link href="/dashboard/product" className="mr-5 hover:text-gray-900">
+            <Link href="/dashboard/product" className={` hover:text-gray-900 ${pathname === "/dashboard/product" && "text-gray-900 font-bold"}`}>
               Admin Dashboard
             </Link>
           )}
-          <Link href="/sobrenosotros" className="mr-5 hover:text-gray-900">
+          <Link href="/sobrenosotros" className={` hover:text-gray-900   ${pathname === "/sobrenosotros" && "text-gray-900 font-bold"}`}>
             Sobre la Esmeralda
           </Link>
-          <Link href="/politica" className="mr-5 hover:text-gray-900">
+          <Link href="/politica" className={` hover:text-gray-900 ${pathname === "/politica" && "text-gray-900 font-bold"}`}>
             Politica
           </Link>
-          <Link href="/contact" className="mr-5 hover:text-gray-900">
+          <Link href="/contact" className={` hover:text-gray-900 ${pathname === "/contact" && "text-gray-900 font-bold"}`}>
             Contacto
           </Link>
-          <Link href="/mvv" className="mr-5 hover:text-gray-900">
+          <Link href="/mvv" className={` hover:text-gray-900 ${pathname === "/mvv" && "text-gray-900 font-bold"}`}>
             MVV
           </Link>
-          <Link href="/nosotros" className="mr-5 hover:text-gray-900">
+          <Link href="/preguntasFrecuentes" className={` hover:text-gray-900 ${pathname === "/preguntasFrecuentes" && "text-gray-900 font-bold"}`}>
             F&Q
           </Link>
         </nav>
         <div className="hidden md:flex items-center space-x-2">
           <div className="relative flex items-center w-full md:w-auto justify-between md:justify-start space-x-2">
             <input
-              className="bg-gray-200 rounded-full pl-8 pr-4 py-1 focus:outline-none w-full md:w-64"
+              className="bg-gray-200 rounded-full pl-10 pr-4 py-1 focus:outline-none w-full md:w-64 "
               type="text"
               placeholder="Buscar productos..."
               value={searchTerm}
@@ -260,23 +262,26 @@ const Navbar = () => {
               </button>
             </Link>
           )}
-          {showUser && (
+          {/*showUser && (
             <label className="text-gray-900 font-bold cursor-pointer">
               Bienvenido: {userName}
             </label>
-          )}
+          )*/}
           {showUser && (
             <Dropdown
               arrowIcon={false}
               inline
               label={
+                <div className="flex  items-center gap-2">
                 <Image
-                  src={"/perfil.png"}
+                  src={"/perfilModerno.png"}
                   alt="imagen"
                   width={40}
                   height={40}
                   className="rounded-full"
                 />
+                <p className="text-sm text-center w-20 text-wrap">{userName}</p>
+                </div>
               }
             >
               <Dropdown.Header>
@@ -286,25 +291,32 @@ const Navbar = () => {
                 </span>
               </Dropdown.Header>
               {userRole === "admin" ? (
-                <Dropdown.Item href="/dashboard">Dashboard</Dropdown.Item>
+                <Dropdown.Item href="/dashboard/product">Dashboard</Dropdown.Item>
               ) : (
+                <div className="flex flex-col">
                 <Dropdown.Item href="/dashboardCliente">Dashboard</Dropdown.Item>
+                <Dropdown.Item href="/tracking">Envios</Dropdown.Item>
+                </div>
               )}
               <Dropdown.Item onClick={handleSignOut}>Salir</Dropdown.Item>
             </Dropdown>
-          )}
+          )
+          
+          }
         </div>
       </div>
-      {searchProductResults.length > 0 && searchTerm && (
+      {searchProductResults !== undefined && searchProductResults.length > 0 && searchTerm && (
         <div className="absolute top-16 left-0 right-0 z-50 bg-white shadow-md">
-          {searchProductResults.map((product: any) => (
+          {searchProductResults?.map((product: any) => (
             <Link
               href={`/products/${product.id}`}
               key={product.id}
               onClick={handleProductClick}
             >
               <div className="flex items-center p-2 border-b border-gray-200">
-                <img
+                <Image
+                  width={500}
+                  height={500}
                   src={product.imgUrl}
                   alt={product.description}
                   className="w-12 h-12 object-cover mr-2"
@@ -340,74 +352,123 @@ const Navbar = () => {
         </h2>
         <nav>
           <ul className="flex flex-col p-4 text-gray-800">
-            <li className="text-xl py-4 flex">
-              <TbTruckDelivery size={25} className="mr-4" />
-              <Link
-                href="/tracking"
-                className="hover:text-orange-400"
-                onClick={handleNavLinkClick}
-              >
-                Envios
-              </Link>
-            </li>
-            <li className="text-xl py-4 flex">
-              <FaHome size={25} className="mr-4" />
+          <li className="text-xl py-4 flex">
+              
               <Link
                 href="/"
-                className="hover:text-orange-400"
+                className={`hover:text-orange-400 gap-4 flex ${
+                  pathname === "/" ? "text-orange-400 font-bold" : ""
+                }`}
                 onClick={handleNavLinkClick}
               >
+                <FaHome size={25}  />
                 Inicio
               </Link>
             </li>
-            <li className="text-xl py-4 flex">
-              <AiFillProduct size={25} className="mr-4" />
+            {userSession && <li className="text-xl py-4 flex">
               <Link
-                href="/categories"
-                className="hover:text-orange-400"
+                href="/tracking"
+                className={`hover:text-orange-400 gap-4 flex ${
+                  pathname === "/tracking" ? "text-orange-400 font-bold" : ""
+                }`}
                 onClick={handleNavLinkClick}
               >
-                Productos
+                <TbTruckDelivery size={25}  />
+                Envios
+              </Link>
+            </li>}
+            
+            <li className="text-xl py-4 flex">
+              
+              <Link
+                href="/categories"
+                className={`hover:text-orange-400 gap-4 flex ${
+                  pathname === "/categories" ? "text-orange-400 font-bold" : ""
+                }`}
+                onClick={handleNavLinkClick}
+              >
+                <AiFillProduct size={25}/>
+                Tienda Online
               </Link>
             </li>
             <li className="text-xl py-4 flex">
-              <AiFillTag size={25} className="mr-4" />
+              
               <Link
-                href="/home"
-                className="hover:text-orange-400"
+                href="/promotions"
+                className={`hover:text-orange-400 gap-4 flex ${
+                  pathname === "/promotions" ? "text-orange-400 font-bold" : ""
+                }`}
                 onClick={handleNavLinkClick}
               >
+                <AiFillTag size={25} />
                 Promociones
               </Link>
             </li>
             <li className="text-xl py-4 flex">
-              <FaCartPlus size={25} className="mr-4" />
+              
               <Link
                 href="/cart"
-                className="hover:text-orange-400"
+                className={`hover:text-orange-400 gap-4 flex ${
+                  pathname === "/cart" ? "text-orange-400 font-bold" : ""
+                }`}
                 onClick={handleNavLinkClick}
               >
+                <FaCartPlus size={25} />
                 Carrito
               </Link>
             </li>
             <li className="text-xl py-4 flex">
-              <MdHelp size={25} className="mr-4" />
+              
               <Link
-                href="/aboutus"
-                className="hover:text-orange-400"
+                href="/sobrenosotros"
+                className={`hover:text-orange-400 gap-4 flex ${
+                  pathname === "/sobrenosotros" ? "text-orange-400 font-bold" : ""
+                }`}
                 onClick={handleNavLinkClick}
               >
-                Nosotros
+                <MdHelp size={25} />
+                Sobre la Esmeralda
               </Link>
             </li>
             <li className="text-xl py-4 flex">
-              <MdHelp size={25} className="mr-4" />
+              
               <Link
-                href="/ayuda"
-                className="hover:text-orange-400"
+                href="/politica"
+                className={`hover:text-orange-400 gap-4 flex ${
+                  pathname === "/politica" ? "text-orange-400 font-bold" : ""
+                }`}
                 onClick={handleNavLinkClick}
               >
-                Ayuda
+                <AiFillProduct size={25}/>
+                Politica
+              </Link>
+            </li>
+            <li className="text-xl py-4 flex">
+              
+              <Link
+                href="/mvv"
+                className={`hover:text-orange-400 gap-4 flex ${
+                  pathname === "/mvv" ? "text-orange-400 font-bold" : ""
+                }`}
+                onClick={handleNavLinkClick}
+              >
+                <AiFillProduct size={25}/>
+                MVV
+              </Link>
+            </li>
+
+            
+            <li className="text-xl py-4 flex">
+              
+              <Link
+                href="/preguntasFrecuentes"
+                className={`hover:text-orange-400 gap-4 flex ${
+                  pathname === "/preguntasFrecuentes" ? "text-orange-400 font-bold" : ""
+                }`}
+                onClick={handleNavLinkClick}
+              >
+                <MdHelp size={25}/>
+                F&Q
               </Link>
             </li>
           </ul>

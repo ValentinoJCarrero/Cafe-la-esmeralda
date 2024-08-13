@@ -32,10 +32,11 @@ export const getCategoryById = (id: number) => {
 //! Get all categories
 export async function getCategories() {
   try {
-    const res = await axios.get(`${apiURL}/category`);
+    const res = await axios.get(`${apiURL}/categories`);
     return res.data;
     console.log(res.data);
   } catch (error: any) {
-    throw new Error(`Error fetching categories: ${error.message}`);
+    /*throw new Error(`Error fetching categories: ${error.message}`);*/
+    console.log(`Error fetching categories: ${error.message}`);
   }
 }

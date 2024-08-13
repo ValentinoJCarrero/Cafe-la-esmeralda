@@ -1,41 +1,19 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Textarea } from "flowbite-react";
 import RatingStars from "@/components/ratingStars/ratingStars";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
-import {jwtDecode} from "jwt-decode"; // Asegúrate de importar jwt-decode
 
-const apiURL = "http://localhost:3001/testimony"; // Endpoint actualizado
+const apiURL = "http://localhost:3001/testimony";
 
 const Contacto: React.FC = () => {
   const [description, setDescription] = useState<string>("");
   const [punctuation, setPunctuation] = useState<number>(0);
-  const [isUserLoggedIn, setIsUserLoggedIn] = useState<boolean>(false);
   const [userName, setUserName] = useState<string>("");
   const [userId, setUserId] = useState<string>("");
 
   const router = useRouter();
-
-  useEffect(() => {
-    const userSession = JSON.parse(localStorage.getItem("userSession") || "{}");
-    if (userSession.accessToken) {
-      const decodedToken: any = jwtDecode(userSession.accessToken);
-      if (decodedToken) {
-        setUserName(decodedToken.name);
-        setUserId(decodedToken.sub);
-        setIsUserLoggedIn(true);
-      }
-    } else {
-      Swal.fire({
-        icon: "error",
-        title: "Debes estar logueado para poder hacer un comentario",
-        text: "Redirigiendo a la página de inicio de sesión...",
-      }).then(() => {
-        router.push("/login");
-      });
-    }
-  }, [router]);
 
   const handleCambioDeCalificacion = (calificacion: number) => {
     setPunctuation(calificacion);
@@ -43,15 +21,6 @@ const Contacto: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!isUserLoggedIn || !userId) {
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Usuario no autenticado",
-      });
-      return;
-    }
 
     const review = {
       userId, // Enviar el UUID del usuario
@@ -115,7 +84,7 @@ const Contacto: React.FC = () => {
           ></iframe>
         </div>
         <div className="container px-5 py-24 mx-auto flex">
-          <div className="lg:w-1/3 md:w-1/2 bg-white dark:bg-gray-700  rounded-lg p-8 flex flex-col md:ml-auto w-full mt-10 md:mt-0 relative z-10 shadow-md">
+          <div className="lg:w-1/3 md:w-1/2 bg-white dark:bg-gray-700  rounded-lg p-8 flex flex-col md:ml-auto w-full mt-10 md:mt-0 relative z-[2] shadow-md">
             <h2 className="text-gray-900 text-lg mb-1 font-medium title-font dark:text-teal-500">
               Danos tu Opinión!
             </h2>
@@ -139,6 +108,7 @@ const Contacto: React.FC = () => {
                   required
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
+                  className="p-2"
                 />
               </div>
               <div className="relative mb-4">
@@ -153,7 +123,6 @@ const Contacto: React.FC = () => {
               <button
                 type="submit"
                 className="text-white bg-teal-500 border-0 py-2 px-6 focus:outline-none hover:bg-teal-800 rounded text-lg"
-                disabled={!isUserLoggedIn}
               >
                 Enviar Opinión
               </button>

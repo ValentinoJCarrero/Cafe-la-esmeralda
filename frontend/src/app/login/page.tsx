@@ -3,6 +3,7 @@ import { LoginUser } from "@/helpers/Autenticacion.helper";
 import { ILoginErrorProps, ILoginProps } from "@/types/login";
 import { validateLoginForm } from "@/utils/loginFormValidation";
 import { useRouter } from "next/navigation";
+import Link from "next/link"; 
 import { useState } from "react";
 import { toast, ToastContainer } from "react-toastify";
 import Swal from "sweetalert2";
@@ -15,6 +16,9 @@ import Container from "@mui/material/Container";
 import Box from "@mui/material/Box";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import Image from "next/image";
+import { MdVisibility, MdVisibilityOff } from "react-icons/md";
+import { IconButton } from "@mui/material";
+import InputAdornment from '@mui/material/InputAdornment';
 
 const theme = createTheme();
 
@@ -40,6 +44,13 @@ const Login = () => {
     email: false,
     password: false,
   });
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleClickShowPassword = () => setShowPassword((show) => !show);
+
+  const handleMouseDownPassword = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault();
@@ -184,16 +195,30 @@ const Login = () => {
                   margin="normal"
                   required
                   fullWidth
+                  type={showPassword ? 'text' : 'password'}
                   id="password"
                   label="Contraseña"
                   name="password"
-                  type="password"
                   autoComplete="current-password"
                   value={dataUser.password}
                   onChange={handleChange}
                   error={!!error.password}
                   helperText={error.password}
                   InputLabelProps={{ style: { color: "teal" } }}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="toggle password visibility"
+                          onClick={handleClickShowPassword}
+                          onMouseDown={handleMouseDownPassword}
+                          edge="end"
+                        >
+                          {showPassword ? <MdVisibilityOff /> : <MdVisibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
                 />
                 <div className="flex flex-wrap items-center gap-4 justify-between mt-4">
                   <div className="flex items-center">
@@ -302,6 +327,25 @@ const Login = () => {
                       ></path>
                     </svg>
                   </button>
+                </div>
+                <div className="mt-4">
+                  <Link href="/" passHref>
+                    <Button
+                       type="submit"
+                       fullWidth
+                       variant="contained"
+                       sx={{
+                         mt: 3,
+                         mb: 2,
+                         backgroundColor: "teal",
+                         "&:hover": {
+                           backgroundColor: "darkslategray",
+                         },
+                       }}
+                    >
+                      Volver al Inicio
+                    </Button>
+                  </Link>
                 </div>
               </Box>
             </Box>
