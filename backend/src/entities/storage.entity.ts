@@ -9,10 +9,10 @@ export class Storage {
     @PrimaryGeneratedColumn()
     id: string
 
-    @ManyToOne(()=>User,(user)=>user.storage)
+    @ManyToOne(()=>User,(user)=>user)
     user:User
 
-    @ManyToOne(()=>Product,(product)=>product.storage)
+    @ManyToOne(()=>Product,(product)=>product)
     product:Product
 
     @Column()

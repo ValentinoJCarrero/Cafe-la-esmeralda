@@ -11,20 +11,12 @@ import { Product } from './entities/products/product.entity';
 import { Subproduct } from './entities/products/subprodcut.entity';
 import { User } from 'src/entities/user.entity';
 import { UsersModule } from './modules/users/users.module';
-import { Coffee } from './entities/products/product-coffee.entity';
-import { Mate } from './entities/products/product-mate.entity';
-import { Endulzante } from './entities/products/product-endulzante.entity';
-import {Te} from './entities/products/product-te.entity'
-import { Chocolate } from './entities/products/product-chocolate.entity';
-import { Accesorio } from './entities/products/product-accesorio.entity';
 import { OrderModule } from './modules/order/order.module';
 import { MercadoPagoModule } from './modules/mercadopago/mercado-pago.module';
 import { JwtModule } from '@nestjs/jwt';
 import { TestimonyModule } from './modules/testimony/testimony.module';
 import { Testimony } from './entities/testimony.entity';
 import { CategoryModule } from './modules/categories/category.module';
-import { StorageOrderModule } from './modules/storageOrder/storage-order.module';
-import { Storage } from './entities/storage.entity';
 import { ImageModule } from './modules/images/image.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { MailerModule } from './modules/mailer/mailer.module';
@@ -41,7 +33,7 @@ import { MailerModule } from './modules/mailer/mailer.module';
       useFactory: (ConfigService: ConfigService) =>
         ConfigService.get('typeorm'),
     }),
-    TypeOrmModule.forFeature([Testimony,Product,Subproduct,Category,User,Coffee,Mate,Endulzante,Chocolate,Te,Accesorio,Storage]),
+    TypeOrmModule.forFeature([Testimony,Product,Subproduct,Category,User]),
     AuthModule,
     ImageModule,
     UsersModule,
@@ -55,7 +47,6 @@ import { MailerModule } from './modules/mailer/mailer.module';
       secret: process.env.JWT_SECRET,
     }),
     CategoryModule,
-    StorageOrderModule,
     MailerModule
   ],
   controllers: [AppController],

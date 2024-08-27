@@ -1,201 +1,160 @@
-import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Order } from 'src/entities/order.entity';
 import { OrderDetail } from 'src/entities/orderdetail.entity';
 import { DataSource, Repository } from 'typeorm';
-import { FinalOrderDto, ProductInfo, UpdateOrderDto } from './order.dto';
+import { ProductInfo, UpdateOrderDto } from './order.dto';
 import { User } from 'src/entities/user.entity';
 import { Product } from 'src/entities/products/product.entity';
 import { ProductsOrder } from 'src/entities/product-order.entity';
-import { OrderQuery } from './orders.query';
 import { Transaccion } from 'src/entities/transaction.entity';
-import { OrderStatus } from 'src/enum/orderStatus.enum';
-import { log } from 'console';
-
+import { Subproduct } from 'src/entities/products/subprodcut.entity';
+import { OrderQuery } from './orders.query';
 
 @Injectable()
 export class OrderService {
     constructor(
-        @InjectRepository(Order) private orderRepository: Repository<Order>,
-        @InjectRepository(OrderDetail) private orderDetailRepository: Repository<OrderDetail>,
-        @InjectRepository(User) private userRepository: Repository<User>,
-        @InjectRepository(Product) private productRepository: Repository<Product>,
-        @InjectRepository(Transaccion) private transactionRepository: Repository<Transaccion>,
-        @InjectRepository(ProductsOrder) private productsOrderRepository: Repository<ProductsOrder>,
+        @InjectRepository(Order) private readonly orderRepository: Repository<Order>,
+        @InjectRepository(OrderDetail) private readonly orderDetailRepository: Repository<OrderDetail>,
+        @InjectRepository(User) private readonly userRepository: Repository<User>,
+        @InjectRepository(Product) private readonly productRepository: Repository<Product>,
+        @InjectRepository(Transaccion) private readonly transactionRepository: Repository<Transaccion>,
+        @InjectRepository(ProductsOrder) private readonly productsOrderRepository: Repository<ProductsOrder>,
+        @InjectRepository(Subproduct) private readonly subproductRepository: Repository<Subproduct>,
+        private readonly dataSource: DataSource,
+        private readonly orderQuery: OrderQuery
+    ) {}
 
-        private readonly orderQuery: OrderQuery,
-        private readonly dataSource: DataSource
-    ){}
-
-    async getOrders() {
-        const orders = await this.orderQuery.getOrders()
-        return orders
+    async getOrders(page: number, limit: number): Promise<{ data: Order[], total: number }> {
+        const [data, total] = await this.orderRepository.findAndCount({
+            skip: (page - 1) * limit,
+            take: limit
+        })
+      
+        return { data, total };
     }
 
     async getOrderById(id: string) {
-        let finalOrder = new FinalOrderDto()
         const foundOrder = await this.orderQuery.getOrderById(id);
         if(!foundOrder) throw new NotFoundException(`Orden no encontrada. ID: ${id}`);
-        const prices =  foundOrder.productsOrder.map(product => product.product.price)
-        const quantity =  foundOrder.productsOrder.map(quantity => quantity.quantity)
 
-        let finalPrice:number = 0
-        let partialPrice:number = 0
-        for (let i = 0; i < prices.length; i++) {
-            partialPrice= prices[i]*quantity[i]
-            finalPrice = finalPrice + partialPrice;
-        }
-        finalOrder = { 
-            ...foundOrder, 
-            finalPrice 
-          };
-        return finalOrder;
+        return foundOrder;
     }
 
-    async getOrdersByUserId(id: string) {
-        return await this.orderQuery.getOrdersByUserId(id)
+    async getOrdersByUserId(id: string, page: number, limit: number): Promise<{ data: Order[], total: number }> {
+        const user = await this.userRepository.findOneBy({ id, isDeleted: false });   
+        if (!user) throw new BadRequestException(`Usuario no encontrado. ID: ${id}`);
+
+        const [data, total] = await this.orderRepository.findAndCount({
+            skip: (page - 1) * limit,
+            take: limit,
+            where: { user }
+        })
+      
+        return { data, total };
     }
 
-    async createOrder(
-      userId: string, 
-      productsInfo: ProductInfo[], 
-      address: string | undefined, 
-      discount: number | undefined, 
-      deliveryDate: Date | undefined
-  ) {
-      let total = 0; 
-      let createdOrder;
+    async createOrder(userId: string, productsInfo: ProductInfo[], address: string | undefined, account: boolean) {
+        let total = 0;
+        let createdOrder;
+    
+        const user = await this.userRepository.findOneBy({ id: userId, isDeleted: false });
+        if (!user) throw new BadRequestException(`Usuario no encontrado. ID: ${userId}`);
+    
+        await Promise.all(productsInfo.map(async (product) => {
+            const foundSubproduct = await this.subproductRepository.findOne({
+                where: { id: product.subproductId },
+                relations: ['product']
+            });
+            if (!foundSubproduct) throw new BadRequestException(`Subproducto no encontrado. ID: ${product.subproductId}`);
+            if (foundSubproduct.stock <= 0) throw new BadRequestException(`Subproducto sin stock. ID: ${foundSubproduct.id}`);
+        }));
+    
+        await this.dataSource.transaction(async (transactionalEntityManager) => {
+            const order = transactionalEntityManager.create(Order, { user, date: new Date() });
+            const newOrder = await transactionalEntityManager.save(order);
+            createdOrder = newOrder;
+    
+            await Promise.all(productsInfo.map(async (product) => {
+                await this.updateStock(product.subproductId);
+    
+                const foundSubproduct = await transactionalEntityManager.findOneBy(Subproduct, { id: product.subproductId });
+                if (!foundSubproduct) throw new BadRequestException(`Subproducto no encontrado. ID: ${product.subproductId}`);
+    
+                total += ((foundSubproduct.price * product.quantity) * (1 - foundSubproduct.discount));
+    
+                const productsOrder = transactionalEntityManager.create(ProductsOrder, {
+                    subproduct: foundSubproduct,
+                    order: newOrder,
+                    quantity: product.quantity
+                });
+    
+                await transactionalEntityManager.save(ProductsOrder, productsOrder);
+            }));
+    
+            const orderDetail = transactionalEntityManager.create(OrderDetail, {
+                totalPrice: Number(total.toFixed(2)),
+                order: newOrder,
+                addressDelivery: address || 'Retiro en local',
+            });
+    
+            await transactionalEntityManager.save(OrderDetail, orderDetail);
+    
+            await transactionalEntityManager.save(Transaccion, {
+                status: account ? 'En preparación' : 'Pendiente de pago',
+                timestamp: new Date(),
+                orderdetail: orderDetail
+            });
+        });
   
-      const user = await this.userRepository.findOneBy({ id: userId, isDeleted: false });   
-      if (!user) throw new BadRequestException(`User not found. ID: ${userId}`);
-  
-      await Promise.all(productsInfo.map(async (product)=> {
-          const foundProduct = await this.productRepository.findOneBy({ id: product.id });
-          if (!foundProduct) throw new BadRequestException(`Product not found. ID: ${product.id}`);
-          if (foundProduct.stock <= 0) throw new BadRequestException(`Producto sin stock. ID: ${foundProduct.id}`);
-      }));
-  
-      await this.dataSource.transaction(async (transactionalEntityManager) => {
-          const order = transactionalEntityManager.create(Order, { user, date: new Date() });
-          const newOrder = await transactionalEntityManager.save(order);
-          createdOrder = newOrder;
-  
-          await Promise.all(productsInfo.map(async (product) => {
-              await this.updateStock(product.id);
-  
-              const foundProduct = await transactionalEntityManager.findOneBy(Product, { id: product.id });
-              if (!foundProduct) throw new BadRequestException(`Product not found. ID: ${product.id}`);
-              
-              total += ((foundProduct.price * product.quantity) * (1 - foundProduct.discount));
-              
-              const productsOrder = transactionalEntityManager.create(ProductsOrder, {
-                  product: foundProduct, 
-                  order: newOrder,
-                  quantity: product.quantity
-              });
-  
-              await transactionalEntityManager.save(ProductsOrder, productsOrder);
-          }));
-  
-          if (discount) total *= (1 - discount);
-  
-          const orderDetail = transactionalEntityManager.create(OrderDetail, {
-              totalPrice: Number(total.toFixed(2)),
-              order: newOrder,
-              discount: discount || 0,
-              addressDelivery: address || 'Tienda',
-              deliveryDate
-          });
-  
-          await transactionalEntityManager.save(OrderDetail, orderDetail);
-  
-          await transactionalEntityManager.save(Transaccion, {
-              status: OrderStatus.RECIBIDO,
-              timestamp: new Date(),
-              orderdetail: orderDetail
-          });
-      });
-  
-      return createdOrder;
-  }
-  
-    async deleteOrder(id: string) {
-      return await this.orderQuery.deleteOrder(id);
+        delete createdOrder.user.password;
+        return createdOrder;
     }
     
-    async updateStock(id: string) {
-        const product = await this.productRepository.findOne({ where: { id } });
-        await this.productRepository.update({ id },{ stock: product.stock - 1 });
+    async updateOrder(id: string, data: UpdateOrderDto) {
+        const order = await this.orderRepository.findOne({
+            where: { id },
+            relations: ['productsOrder', 'productsOrder.product', 'orderDetail', 'orderDetail.transactions']
+        });
+        if (!order) throw new NotFoundException('Orden no encontrada');
 
-        }
-        async updateOrder(orderId: string, productsInfo: ProductInfo[], address: string, discount: number, deliveryDate: Date) {
-            let total = 0;
-        
-            const order = await this.orderRepository.findOne({
-                where: { id: orderId },
-                relations: ['productsOrder', 'productsOrder.product', 'orderDetail']
-            });
-        
-            if (!order) {
-                throw new NotFoundException('Orden no encontrada');
-            }
-        
-            if (!Array.isArray(productsInfo)) {
-                throw new BadRequestException('La información de los productos no es válida');
-            }
-        
-            await Promise.all(productsInfo.map(async (product) => {
-                const foundProduct = await this.productRepository.findOne({ where: { id: product.id } });
-                if (!foundProduct) throw new BadRequestException(`Producto no encontrado. ID: ${product.id}`);
-                if (foundProduct.stock < product.quantity) throw new BadRequestException(`Stock insuficiente para el producto ID: ${product.id}`);
-        
-                const productTotal = (foundProduct.price * product.quantity) * (1 - (foundProduct.discount / 100));
-                total += productTotal;
-                
-                const existingProductOrder = order.productsOrder.find(p => p.product.id === product.id);
-                if (existingProductOrder) {
-                    existingProductOrder.quantity = product.quantity;
-                    await this.productsOrderRepository.save(existingProductOrder);
-                } else {
-                    const newProductOrder = this.productsOrderRepository.create({
-                        product: foundProduct,
-                        order,
-                        quantity: product.quantity
-                    });
-                    await this.productsOrderRepository.save(newProductOrder);
-                }
-        
-                for (let i = 0; i < product.quantity; i++) {
-                    await this.updateStock(product.id);
-                }
-        
-                console.log(`Producto ID: ${product.id}`);
-                console.log(`Precio del Producto: ${foundProduct.price}`);
-                console.log(`Cantidad del Producto: ${product.quantity}`);
-                console.log(`Descuento del Producto: ${foundProduct.discount}`);
-                console.log(`Total Calculado para este Producto: ${productTotal}`);
-            }));
-        
-            if (discount) total *= (1 - (discount / 100));
-        
+        await this.orderDetailRepository.update(
+            { id: order.orderDetail.id },
+            { deliveryDate: data.deliveryDate }
+        );
 
-            order.orderDetail.addressDelivery = address || order.orderDetail.addressDelivery;
-            order.orderDetail.totalPrice = Number(total.toFixed(2));
-            order.orderDetail.cupoDescuento = discount || order.orderDetail.cupoDescuento;
-            order.orderDetail.deliveryDate = deliveryDate || order.orderDetail.deliveryDate;
+        await this.transactionRepository.update({ id: order.orderDetail.transactions.id }, { status: data.status });
+
+        return { HttpCode: 200 };
+    }
+
+    async MercadoPagoUpdate(id: string) {
+        const foundOrder = await this.orderRepository.findOne({ 
+            where: { id }, 
+            relations: { orderDetail: { transactions: true }, user: true } 
+        });
+        if (!foundOrder) throw new BadRequestException(`Orden no encontrada. ID: ${id}`);
+
+        await this.orderRepository.update(id, { status: 'Pagado' });
+        await this.transactionRepository.update({ id: foundOrder.orderDetail.transactions.id }, { status: 'En preparación' });
+
+        return { HttpCode: 200 };
+    }
+
+    async deleteOrder(id: string) {
+        const foundOrder = await this.getOrderById(id);
+        if (!foundOrder) throw new NotFoundException(`Orden no encontrada. ID: ${id}`);
+
+        await this.orderRepository.update(id, { isDeleted: true });
+
+        return foundOrder;
+    }
+
+    async updateStock(subproductId: string) {
+        const subproduct = await this.subproductRepository.findOne({ where: { id: subproductId } });
+        if (!subproduct) throw new BadRequestException(`Subproducto no encontrado. ID: ${subproductId}`);
         
-            await this.orderDetailRepository.save(order.orderDetail);
-            await this.orderRepository.save(order);
-        
-            const transaction = this.transactionRepository.create({
-                status: OrderStatus.RECIBIDO, 
-                timestamp: new Date(),
-                orderdetail: order.orderDetail
-            });
-        
-            await this.transactionRepository.save(transaction);
-        
-            return order;
-        }
-        
+        await this.subproductRepository.update({ id: subproductId }, { stock: subproduct.stock - 1 });
+    }
+    
 }

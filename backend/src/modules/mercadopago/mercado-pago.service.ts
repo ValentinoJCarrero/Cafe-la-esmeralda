@@ -2,10 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { preference, payment } from 'src/config/mercadopago.config';
 import { PaymentDto } from './payment.dto';
 import { OrderService } from '../order/order.service';
+import { MailerService } from '../mailer/mailer.service';
 
 @Injectable()
 export class MercadoPagoService {
-  constructor(private readonly orderService: OrderService) {}
+  constructor(
+    private readonly orderService: OrderService,
+    private readonly mailerService: MailerService
+  ) {}
 
   async createPayment(data: PaymentDto) {
     try {
@@ -21,14 +25,15 @@ export class MercadoPagoService {
           ],
           payment_methods: { excluded_payment_types: [{ id: 'ticket' }] },
           back_urls: {
-          success: 'https://cafe-la-esmeralda.vercel.app',
-          failure: 'https://cafe-la-esmeralda.vercel.app'
+          success: `https://cafe-la-esmeralda.vercel.app/PaymentSuccess/?orderId=${data.orderId}`,
+          failure: `https://cafe-la-esmeralda.vercel.app/PaymentFailure/?orderId=${data.orderId}`
           },
-          notification_url: 'https://a076-2800-810-434-680-7859-b9cf-4d33-276c.ngrok-free.app/mercadopago/webhook',
+          notification_url: 'https://valentino-tunnel.flamefactory.io/mercadopago/webhook',
           payer: { name: data.orderId }
         }
+        
       });
-      
+
       return response.init_point;
     } catch (error) {
       throw new Error(`Error creando el pago. ERROR: ${error.message}`);
@@ -42,8 +47,10 @@ export class MercadoPagoService {
       if(data.status === 'approved') {
         const order = await this.orderService.getOrderById(data.additional_info.payer.first_name);
         
-        (await order).status = 'Pagado';
-        console.log(order); // ACÁ VA EL UPDATE A ORDER
+        this.orderService.MercadoPagoUpdate(order.id);
+        this.mailerService.sendEmailOrderPaid(order);
+
+        return { HttpCode: 200 }
       }
     }
   }
