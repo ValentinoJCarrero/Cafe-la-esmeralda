@@ -3,10 +3,10 @@ import { config as dotenvConfig } from 'dotenv';
 
 dotenvConfig({ path: '.env.development'});
 
-export const email = 'info@cafelaesmeralda.com.ar';
+export const email = 'Informes@cafelaesmeralda.com.ar';
 
 const transporter = nodemailer.createTransport({
-    host: 'smtp.hostinger.com',
+    host: 'mxout3.hostingtelefonica.com.ar',
     port: 587,
     secure: false,
     auth: {
